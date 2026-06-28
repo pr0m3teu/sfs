@@ -1,8 +1,9 @@
 #include <stdio.h>
-
+#include "sfs.h"
 
 int main(void) 
 {
-    printf("Hello World!\n");
+    char file_name[] = "sfs.txt";
+    sfs_init(file_name, MAX_FS_SIZE); 
     return 0;
 }

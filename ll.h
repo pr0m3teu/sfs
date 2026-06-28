@@ -1,7 +1,7 @@
 #ifndef LL_H_
 #define LL_H_
 
-
+#include <stddef.h>
 
 typedef struct node_s {
     void* data;
@@ -23,6 +23,7 @@ int free_ll(ll_t *list);
 #ifdef LL_IMPLEMENTATION
 
 #include <stdlib.h>
+#include <string.h>
 
 
 int init_ll(ll_t* list, size_t data_size)
@@ -71,8 +72,8 @@ int insert_ll(ll_t* list, void* data)
     if (node->data == NULL) return -1;
     memcpy(node->data, data, list->data_size);
 
-    tail->next = node;
-    tail = node;
+    list->tail->next = node;
+    list->tail = node;
 
     return 0;
 }
@@ -94,6 +95,7 @@ int free_ll(ll_t* list) {
     free(p->data);
     free(p);
 
+    return 0;
 }
 
 #endif // LL_IMPLEMENTATION
