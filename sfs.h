@@ -6,7 +6,7 @@
 
 #define SFSMagic 0x636967614D534653 //SFSMagic
                                     
-#define MAX_FS_SIZE (4UL << 30) // 2 GB 
+#define MAX_FS_SIZE (1UL << 31) // 2 GB 
 
 #define BLOCK_SIZE  1024UL
 
@@ -16,13 +16,26 @@
  * booting from it. Therefore the first block will be the super
  * block and not the boot block.
  */
-#define SB_OFFSET 0
+#define SB_OFFSET     0
+#define INODES_OFFSET 1
 
 
 struct superblock {
-    uint64_t magic;
-    uint64_t size;
+    uint64_t magic; // Must be SFSMagic
+    uint64_t size;  // SFS file size
 };
+
+#define NDISK_BLOCKS 16
+#define MAX_FILE_SIZE (BLOCK_SIZE * NDISK_BLOCKS)
+
+// Inode representation inside the fs file
+struct fsinode {
+    uint32_t type;                // File type
+    uint32_t addrs[NDISK_BLOCKS]; // Block addresses for file
+};
+
+
+#define MAX_INODES (BLOCK_SIZE / sizeof(fsinode))
 
 typedef enum {
     SFS_ERR_OK,
@@ -31,6 +44,7 @@ typedef enum {
 } sfs_err;
 
 
-sfs_err sfs_init(const char* pathname, size_t fs_size);
+sfs_err sfs_init(const char* pathname);
 
+void print_sb(struct superblock sb);
 #endif  // SFS_H_

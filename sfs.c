@@ -6,45 +6,39 @@
 #include <unistd.h>
 #include "sfs.h"
 
-static void print_sb(struct superblock sb);
+void print_sb(struct superblock sb);
 
-static uint8_t* read_block(int fd, uint64_t block_num);
-static void  write_block(int fd, uint64_t block_num, uint8_t* block);
+uint8_t* read_block(int fd, uint64_t block_num);
+void  write_block(int fd, uint64_t block_num, uint8_t* block);
 
-sfs_err sfs_init(const char* pathname, size_t size)
+void read_sb(int fd);
+
+static struct superblock sb;
+
+sfs_err sfs_init(const char* pathname)
 {
-    if (size > MAX_FS_SIZE) size = MAX_FS_SIZE;
-
-    const int fd = open(pathname, O_CREAT | O_RDWR, 0600);
+    const int fd = open(pathname, O_RDWR, 0600);
     if (fd < 0)
     {
-        return SFS_ERR_CREAT;
+        return -SFS_ERR_CREAT;
     }
 
-    struct superblock sb;
-    sb.magic = SFSMagic;
-    sb.size = MAX_FS_SIZE;
+    read_sb(fd);
 
-    uint8_t buf[BLOCK_SIZE];
-    memset(buf, 0, BLOCK_SIZE);
-    memcpy(buf, &sb, sizeof(sb));
     print_sb(sb);
-
-    write_block(fd, SB_OFFSET, (uint8_t*) buf);
     
-    uint8_t* read_buf = read_block(fd, SB_OFFSET);
-    struct superblock read_sb;
-    memcpy(&read_sb, read_buf, sizeof(read_sb)); 
-
-    print_sb(read_sb);
-    if (close(fd) < 0) return SFS_ERR_CREAT;
-
- 
-    return SFS_ERR_OK;
+    return 0;
 }
 
 
-static uint8_t* read_block(int fd, uint64_t block_num)
+void read_sb(int fd)
+{
+    uint8_t *block = read_block(fd, SB_OFFSET); 
+    memcpy(&sb, block, sizeof(sb));
+}
+
+
+uint8_t* read_block(int fd, uint64_t block_num)
 {   
     off_t offset = lseek(fd, block_num * BLOCK_SIZE, SEEK_SET);
     if (offset < 0)
@@ -66,7 +60,7 @@ static uint8_t* read_block(int fd, uint64_t block_num)
 }
 
 
-static void  write_block(int fd, uint64_t block_num, uint8_t* block)
+void  write_block(int fd, uint64_t block_num, uint8_t* block)
 {
     
     off_t offset = lseek(fd, block_num * BLOCK_SIZE, SEEK_SET);
@@ -86,7 +80,7 @@ static void  write_block(int fd, uint64_t block_num, uint8_t* block)
 }
 
 
-static void print_sb(struct superblock sb)
+void print_sb(struct superblock sb)
 {
     printf("Super Block:\n");
     printf("  Magic: 0x%lX\n", sb.magic);

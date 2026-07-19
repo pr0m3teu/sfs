@@ -4,8 +4,7 @@
 int main(void) 
 {
     char file_name[] = "sfs.txt";
-    sfs_init(file_name, MAX_FS_SIZE); 
-
+    sfs_init(file_name); 
     
     return 0;
 }

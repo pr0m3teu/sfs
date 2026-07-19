@@ -7,7 +7,11 @@ sfs: main.c sfs.o
 sfs.o: sfs.c sfs.h
 	$(CC) -c $(CFLAGS) sfs.c
 
+
+mkfs: mkfs.c sfs.o
+	$(CC) -o mkfs $(CFLAGS) mkfs.c sfs.o
+
 .PHONY: clean
 clean:
-	rm *.o
-	rm *.txt
+	rm -f *.o
+	rm -f *.txt
