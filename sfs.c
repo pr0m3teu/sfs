@@ -1,12 +1,13 @@
-#include <fcntl.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
-
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "sfs.h"
-#define LL_IMPLEMENTATION
-#include "ll.h"
+
+static uint8_t* read_block(int fd, uint64_t block_num);
+static void  write_block(int fd, uint64_t block_num, uint8_t* block);
 
 sfs_err sfs_init(const char* pathname, size_t size)
 {
@@ -18,45 +19,66 @@ sfs_err sfs_init(const char* pathname, size_t size)
         return SFS_ERR_CREAT;
     }
 
-    ll_t *free_inodes = (ll_t*) malloc(sizeof(ll_t));
-    ll_t *free_blocks = (ll_t*) malloc(sizeof(ll_t)); 
+    char super_block[BLOCK_SIZE] = {0};
+    strcpy(super_block, "Hello SFS!\0");
+    write_block(fd, SB_OFFSET, (uint8_t*)super_block);
     
-    // TODO: Round size to the closest, greater power of 2
-    const uint64_t total_blocks = size / BLOCK_SIZE;
+    uint8_t* sb = read_block(fd, SB_OFFSET);
+    printf("%s\n", (char*) sb);
 
-    init_ll(free_inodes, sizeof(uint32_t));
-    init_ll(free_blocks, sizeof(uint32_t));
-
-
-    for (int i = 0; i < MAX_INODES; ++i)
-    {
-        uint32_t *p = malloc(sizeof(uint32_t));
-        *p = i;
-        insert_ll(free_inodes, p); 
-    }
-
-
-    for (uint64_t i = 0; i < total_blocks; ++i)
-    {
-        uint32_t *p = malloc(sizeof(uint32_t));
-        *p = i;
-        insert_ll(free_blocks, p);
-    }
-
-    node_t *node = free_blocks->head;
-
-       
-    char buf[] = "SFSMagic";
-    int bytes = write(fd, buf, sizeof(buf) - 1); 
-
-    if (bytes < 0)
-    {
-        return bytes;
-    }
-
-    close(fd);
-
+    if (close(fd) < 0) return SFS_ERR_CREAT;
 
  
     return SFS_ERR_OK;
+}
+
+
+static uint8_t* read_block(int fd, uint64_t block_num)
+{
+    if (block_num < 0)
+    {
+        fprintf(stderr, "ERROR: Cannot access negative block:  %ld!\n", block_num);
+        exit(1);
+    }
+
+    off_t offset = lseek(fd, block_num * BLOCK_SIZE, SEEK_SET);
+    if (offset < 0)
+    {
+        fprintf(stderr, "ERROR: Could not find block %ld\n", block_num);
+        exit(1);
+    }
+
+    uint8_t* buf = (uint8_t*) malloc(sizeof(uint8_t) * BLOCK_SIZE);
+    ssize_t bytes = read(fd, buf, BLOCK_SIZE);
+    if (bytes < 0) 
+    {
+        fprintf(stderr, "ERROR: Could not read block from sfs\n");
+        free(buf);
+        exit(1);
+    }
+    
+    return buf;
+}
+
+
+static void  write_block(int fd, uint64_t block_num, uint8_t* block)
+{
+    if (block_num < 0)
+    {
+        fprintf(stderr, "ERROR: Cannot access negative block:  %ld!\n", block_num);
+        exit(1);
+    }
+    off_t offset = lseek(fd, block_num * BLOCK_SIZE, SEEK_SET);
+    if (offset < 0)
+    {
+        fprintf(stderr, "ERROR: could not find block %ld\n", block_num);
+    }
+
+    ssize_t bytes = write(fd, block, BLOCK_SIZE);
+
+    if (bytes < 0)
+    {
+        fprintf(stderr, "ERROR: could not read block from sfs\n");
+        exit(1);
+    }
 }
