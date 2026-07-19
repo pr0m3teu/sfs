@@ -6,3 +6,8 @@ sfs: main.c sfs.o
 
 sfs.o: sfs.c sfs.h
 	$(CC) -c $(CFLAGS) sfs.c
+
+.PHONY: clean
+clean:
+	rm *.o
+	rm *.txt
