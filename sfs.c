@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include "sfs.h"
 
+static void print_sb(struct superblock sb);
+
 static uint8_t* read_block(int fd, uint64_t block_num);
 static void  write_block(int fd, uint64_t block_num, uint8_t* block);
 
@@ -19,13 +21,22 @@ sfs_err sfs_init(const char* pathname, size_t size)
         return SFS_ERR_CREAT;
     }
 
-    char super_block[BLOCK_SIZE] = {0};
-    strcpy(super_block, "Hello SFS!\0");
-    write_block(fd, SB_OFFSET, (uint8_t*)super_block);
-    
-    uint8_t* sb = read_block(fd, SB_OFFSET);
-    printf("%s\n", (char*) sb);
+    struct superblock sb;
+    sb.magic = SFSMagic;
+    sb.size = MAX_FS_SIZE;
 
+    uint8_t buf[BLOCK_SIZE];
+    memset(buf, 0, BLOCK_SIZE);
+    memcpy(buf, &sb, sizeof(sb));
+    print_sb(sb);
+
+    write_block(fd, SB_OFFSET, (uint8_t*) buf);
+    
+    uint8_t* read_buf = read_block(fd, SB_OFFSET);
+    struct superblock read_sb;
+    memcpy(&read_sb, read_buf, sizeof(read_sb)); 
+
+    print_sb(read_sb);
     if (close(fd) < 0) return SFS_ERR_CREAT;
 
  
@@ -34,13 +45,7 @@ sfs_err sfs_init(const char* pathname, size_t size)
 
 
 static uint8_t* read_block(int fd, uint64_t block_num)
-{
-    if (block_num < 0)
-    {
-        fprintf(stderr, "ERROR: Cannot access negative block:  %ld!\n", block_num);
-        exit(1);
-    }
-
+{   
     off_t offset = lseek(fd, block_num * BLOCK_SIZE, SEEK_SET);
     if (offset < 0)
     {
@@ -63,17 +68,14 @@ static uint8_t* read_block(int fd, uint64_t block_num)
 
 static void  write_block(int fd, uint64_t block_num, uint8_t* block)
 {
-    if (block_num < 0)
-    {
-        fprintf(stderr, "ERROR: Cannot access negative block:  %ld!\n", block_num);
-        exit(1);
-    }
+    
     off_t offset = lseek(fd, block_num * BLOCK_SIZE, SEEK_SET);
     if (offset < 0)
     {
         fprintf(stderr, "ERROR: could not find block %ld\n", block_num);
     }
 
+    // TODO: If writing the new block somehow fails,try write back the previous block
     ssize_t bytes = write(fd, block, BLOCK_SIZE);
 
     if (bytes < 0)
@@ -81,4 +83,12 @@ static void  write_block(int fd, uint64_t block_num, uint8_t* block)
         fprintf(stderr, "ERROR: could not read block from sfs\n");
         exit(1);
     }
+}
+
+
+static void print_sb(struct superblock sb)
+{
+    printf("Super Block:\n");
+    printf("  Magic: 0x%lX\n", sb.magic);
+    printf("  Size:  %ld (bytes)\n", sb.size);
 }
